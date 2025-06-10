@@ -51,10 +51,9 @@
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.pattern/leaflet.pattern.min.js"></script>
   <script>
     const visited = JSON.parse(localStorage.getItem('visited') || '{}');
-    const countryLayers = {}; // pour garder une référence aux couches
-
     const map = L.map('map').setView([46.5, 2.2], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
@@ -62,7 +61,7 @@
     }).addTo(map);
 
     const countryData = {
-      "Belgique": {
+      "Belgium": {
         colors: ["#000000", "#FFD700", "#FF0000"],
         anecdote: "La Belgique produit plus de 1 000 variétés de bière !"
       },
@@ -70,29 +69,33 @@
         colors: ["#00A1DE", "#FFFFFF", "#D52B1E"],
         anecdote: "Le Luxembourg est l’un des plus petits pays du monde."
       },
-      "Allemagne": {
+      "Germany": {
         colors: ["#000000", "#DD0000", "#FFCE00"],
         anecdote: "L’Allemagne a plus de 1 500 types de saucisses."
       },
-      "Suisse": {
+      "Switzerland": {
         colors: ["#FF0000"],
         anecdote: "La Suisse a 4 langues nationales !"
       },
-      "Italie": {
+      "Italy": {
         colors: ["#008C45", "#F4F5F0", "#CD212A"],
         anecdote: "L’Italie a plus de sites classés UNESCO que tout autre pays."
       },
-      "Espagne": {
+      "Spain": {
         colors: ["#AA151B", "#F1BF00", "#AA151B"],
         anecdote: "L’Espagne a inventé la sieste — et le flamenco !"
       },
-      "Andorre": {
+      "Andorra": {
         colors: ["#002664", "#FFD700", "#D52B1E"],
         anecdote: "Andorre n’a pas d’aéroport !"
       },
       "Monaco": {
         colors: ["#FF0000", "#FFFFFF"],
         anecdote: "Monaco est le deuxième plus petit pays au monde."
+      },
+      "France": {
+        colors: ["#0055A4", "#FFFFFF", "#EF4135"],
+        anecdote: "La France est le pays le plus visité au monde !"
       }
     };
 
@@ -124,7 +127,23 @@
     fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
       .then(res => res.json())
       .then(data => {
-        const layer = L.geoJSON(data, {
+        const countries = ["France", "Belgium", "Luxembourg", "Germany", "Switzerland", "Italy", "Spain", "Andorra", "Monaco"];
+        const filtered = data.features.filter(f => countries.includes(f.properties.name));
+        const geoJson = L.geoJSON(filtered, {
+          onEachFeature: (feature, layer) => {
+            const name = feature.properties.name;
+            layer.options.interactive = true;
+            layer.on('click', () => {
+              if (!visited[name]) {
+                visited[name] = true;
+                localStorage.setItem('visited', JSON.stringify(visited));
+              }
+              const colors = countryData[name]?.colors || ["#ccc"];
+              const pattern = createFlagPattern(colors);
+              layer.setStyle({ fillPattern: pattern, fillOpacity: 1 });
+              showModal(name, countryData[name]?.anecdote || "Aucune anecdote disponible.");
+            });
+          },
           style: feature => {
             const name = feature.properties.name;
             if (visited[name] && countryData[name]) {
@@ -132,35 +151,18 @@
                 fillPattern: createFlagPattern(countryData[name].colors),
                 fillOpacity: 1,
                 color: '#444',
-                weight: 1,
-                interactive: true
+                weight: 1
               };
             }
             return {
               fillColor: '#fff',
               fillOpacity: 0.1,
               color: '#444',
-              weight: 1,
-              interactive: true
+              weight: 1
             };
-          },
-          onEachFeature: (feature, layer) => {
-            const name = feature.properties.name;
-            if (!countryData[name]) return;
-            countryLayers[name] = layer;
-            layer.on('click', () => {
-              if (!visited[name]) {
-                visited[name] = true;
-                localStorage.setItem('visited', JSON.stringify(visited));
-              }
-              const colors = countryData[name].colors;
-              const pattern = createFlagPattern(colors);
-              layer.setStyle({ fillPattern: pattern, fillOpacity: 1 });
-              showModal(name, countryData[name].anecdote);
-            });
           }
         });
-        layer.addTo(map);
+        geoJson.addTo(map);
       });
   </script>
 </body>
