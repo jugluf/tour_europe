@@ -50,11 +50,8 @@
       margin-right: 0.5em;
     }
     .flag {
-      position: absolute;
-      z-index: 800;
       width: 40px;
       height: auto;
-      transform: translate(-50%, -50%);
     }
   </style>
 </head>
@@ -74,7 +71,7 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     const visited = JSON.parse(localStorage.getItem('visited') || '{}');
-    const flagMarkers = {};  // Pour stocker les marqueurs de drapeaux
+    const flagMarkers = {};
     let currentLayer = null;
     let currentCountry = null;
 
@@ -135,7 +132,6 @@
     function showModal(name, text, layer) {
       currentLayer = layer;
       currentCountry = name;
-
       document.getElementById('modal-title').innerText = name;
       document.getElementById('modal-text').innerText = text;
       document.getElementById('visited-checkbox').checked = !!visited[name];
@@ -152,7 +148,6 @@
       const isVisited = document.getElementById('visited-checkbox').checked;
       visited[currentCountry] = isVisited;
       localStorage.setItem('visited', JSON.stringify(visited));
-
       if (currentLayer) {
         updateLayerStyle(currentLayer, currentCountry);
       }
