@@ -112,11 +112,15 @@
       return ctx.createPattern(canvas, 'repeat');
     }
 
-    function showModal(name, text) {
+    function showModal(name, text, layer, colors) {
       document.getElementById('modal-title').innerText = name;
       document.getElementById('modal-text').innerText = text;
       document.getElementById('modal').style.display = 'block';
       document.getElementById('overlay').style.display = 'block';
+
+      // Appliquer le drapeau en tant que motif dès maintenant
+      const pattern = createFlagPattern(colors);
+      layer.setStyle({ fillPattern: pattern, fillOpacity: 1 });
     }
 
     function closeModal() {
@@ -139,9 +143,7 @@
                 localStorage.setItem('visited', JSON.stringify(visited));
               }
               const colors = countryData[name]?.colors || ["#ccc"];
-              const pattern = createFlagPattern(colors);
-              layer.setStyle({ fillPattern: pattern, fillOpacity: 1 });
-              showModal(name, countryData[name]?.anecdote || "Aucune anecdote disponible.");
+              showModal(name, countryData[name]?.anecdote || "Aucune anecdote disponible.", layer, colors);
             });
           },
           style: feature => {
