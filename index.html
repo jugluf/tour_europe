@@ -49,13 +49,12 @@
     .checkbox-container input {
       margin-right: 0.5em;
     }
-    .flag-icon {
+    .flag {
       position: absolute;
+      z-index: 800;
+      width: 40px;
+      height: auto;
       transform: translate(-50%, -50%);
-      z-index: 500;
-      width: 32px;
-      height: 20px;
-      pointer-events: none;
     }
   </style>
 </head>
@@ -75,7 +74,7 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     const visited = JSON.parse(localStorage.getItem('visited') || '{}');
-    const flagMarkers = {};
+    const flagMarkers = {};  // Pour stocker les marqueurs de drapeaux
     let currentLayer = null;
     let currentCountry = null;
 
@@ -136,9 +135,10 @@
     function showModal(name, text, layer) {
       currentLayer = layer;
       currentCountry = name;
+
       document.getElementById('modal-title').innerText = name;
       document.getElementById('modal-text').innerText = text;
-      document.getElementById('visited-checkbox').checked = visited[name] || false;
+      document.getElementById('visited-checkbox').checked = !!visited[name];
       document.getElementById('modal').style.display = 'block';
       document.getElementById('overlay').style.display = 'block';
     }
@@ -146,27 +146,37 @@
     function closeModal() {
       document.getElementById('modal').style.display = 'none';
       document.getElementById('overlay').style.display = 'none';
-
-      if (currentLayer && currentCountry) {
-        updateLayerStyle(currentLayer, currentCountry);
-        addFlag(currentLayer, currentCountry);
-      }
     }
 
     function toggleVisited() {
       const isVisited = document.getElementById('visited-checkbox').checked;
       visited[currentCountry] = isVisited;
       localStorage.setItem('visited', JSON.stringify(visited));
+
+      if (currentLayer) {
+        updateLayerStyle(currentLayer, currentCountry);
+      }
     }
 
     function updateLayerStyle(layer, countryName) {
       if (visited[countryName] && countryData[countryName]) {
         layer.setStyle({
           fillColor: countryData[countryName].color,
-          fillOpacity: 0.5,
+          fillOpacity: 0.7,
           color: '#333',
           weight: 2
         });
+
+        if (!flagMarkers[countryName]) {
+          const center = layer.getBounds().getCenter();
+          const icon = L.divIcon({
+            html: `<img class="flag" src="${countryData[countryName].flag}" alt="flag">`,
+            iconSize: [40, 30],
+            className: ''
+          });
+          const marker = L.marker(center, { icon }).addTo(map);
+          flagMarkers[countryName] = marker;
+        }
       } else {
         layer.setStyle({
           fillColor: 'transparent',
@@ -174,26 +184,12 @@
           color: '#666',
           weight: 1
         });
+
+        if (flagMarkers[countryName]) {
+          map.removeLayer(flagMarkers[countryName]);
+          delete flagMarkers[countryName];
+        }
       }
-    }
-
-    function addFlag(layer, countryName) {
-      if (!visited[countryName] || !countryData[countryName]) return;
-
-      const center = layer.getBounds().getCenter();
-
-      if (flagMarkers[countryName]) {
-        map.removeLayer(flagMarkers[countryName]);
-      }
-
-      const icon = L.divIcon({
-        className: 'flag-icon',
-        html: `<img src="${countryData[countryName].flag}" width="32" height="20">`,
-        iconSize: [32, 20],
-        iconAnchor: [16, 10]
-      });
-
-      flagMarkers[countryName] = L.marker(center, { icon }).addTo(map);
     }
 
     fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
@@ -212,7 +208,10 @@
                 showModal(name, countryData[name]?.anecdote || "Aucune anecdote disponible.", layer);
               },
               mouseover: () => {
-                layer.setStyle({ weight: 2, color: '#000' });
+                layer.setStyle({
+                  weight: 2,
+                  color: '#000'
+                });
               },
               mouseout: () => {
                 updateLayerStyle(layer, name);
@@ -220,7 +219,6 @@
             });
 
             updateLayerStyle(layer, name);
-            addFlag(layer, name);
           },
           style: {
             fillColor: 'transparent',
