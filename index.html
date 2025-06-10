@@ -51,9 +51,9 @@
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-geojson-vt/leaflet-geojson-vt.min.js"></script>
   <script>
     const visited = JSON.parse(localStorage.getItem('visited') || '{}');
+    const countryLayers = {}; // pour garder une référence aux couches
 
     const map = L.map('map').setView([46.5, 2.2], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -63,11 +63,11 @@
 
     const countryData = {
       "Belgique": {
-        colors: ["#000000", "#FFD700", "#FF0000"], // vertical stripes
+        colors: ["#000000", "#FFD700", "#FF0000"],
         anecdote: "La Belgique produit plus de 1 000 variétés de bière !"
       },
       "Luxembourg": {
-        colors: ["#00A1DE", "#FFFFFF", "#D52B1E"], // horizontal
+        colors: ["#00A1DE", "#FFFFFF", "#D52B1E"],
         anecdote: "Le Luxembourg est l’un des plus petits pays du monde."
       },
       "Allemagne": {
@@ -96,18 +96,16 @@
       }
     };
 
-    function createFlagPattern(name, colors) {
+    function createFlagPattern(colors) {
       const canvas = document.createElement('canvas');
       canvas.width = 30;
       canvas.height = 30;
       const ctx = canvas.getContext('2d');
-
       const stripeHeight = canvas.height / colors.length;
       colors.forEach((color, i) => {
         ctx.fillStyle = color;
         ctx.fillRect(0, i * stripeHeight, canvas.width, stripeHeight);
       });
-
       return ctx.createPattern(canvas, 'repeat');
     }
 
@@ -126,38 +124,40 @@
     fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
       .then(res => res.json())
       .then(data => {
-    const layer = L.geoJSON(data, {
-      style: feature => {
-        const name = feature.properties.name;
-        if (visited[name] && countryData[name]) {
-          const colors = countryData[name].colors;
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          canvas.width = 30;
-          canvas.height = 30;
-          const stripeHeight = canvas.height / colors.length;
-          colors.forEach((color, i) => {
-            ctx.fillStyle = color;
-            ctx.fillRect(0, i * stripeHeight, canvas.width, stripeHeight);
-          });
-          const pattern = ctx.createPattern(canvas, 'repeat');
-          return { fillColor: pattern, color: '#444', weight: 1, fillOpacity: 1, interactive: true };
-        }
-        return { fillColor: '#fff', color: '#444', weight: 1, fillOpacity: 0.1, interactive: true };
-      },
-      onEachFeature: (feature, layer) => {
-        const name = feature.properties.name;
-        if (!countryData[name]) return;
-        layer.on('click', () => {
-          if (!visited[name]) {
-            visited[name] = true;
-            localStorage.setItem('visited', JSON.stringify(visited));
-            layer.setStyle({ fillOpacity: 1 });
-          }
-          showModal(name, countryData[name].anecdote);
-        });
-      }
-    });
+        const layer = L.geoJSON(data, {
+          style: feature => {
+            const name = feature.properties.name;
+            if (visited[name] && countryData[name]) {
+              return {
+                fillPattern: createFlagPattern(countryData[name].colors),
+                fillOpacity: 1,
+                color: '#444',
+                weight: 1,
+                interactive: true
+              };
+            }
+            return {
+              fillColor: '#fff',
+              fillOpacity: 0.1,
+              color: '#444',
+              weight: 1,
+              interactive: true
+            };
+          },
+          onEachFeature: (feature, layer) => {
+            const name = feature.properties.name;
+            if (!countryData[name]) return;
+            countryLayers[name] = layer;
+            layer.on('click', () => {
+              if (!visited[name]) {
+                visited[name] = true;
+                localStorage.setItem('visited', JSON.stringify(visited));
+              }
+              const colors = countryData[name].colors;
+              const pattern = createFlagPattern(colors);
+              layer.setStyle({ fillPattern: pattern, fillOpacity: 1 });
+              showModal(name, countryData[name].anecdote);
+            });
           }
         });
         layer.addTo(map);
