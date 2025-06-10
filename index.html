@@ -49,10 +49,6 @@
     .checkbox-container input {
       margin-right: 0.5em;
     }
-    .flag {
-      width: 40px;
-      height: auto;
-    }
   </style>
 </head>
 <body>
@@ -164,12 +160,12 @@
 
         if (!flagMarkers[countryName]) {
           const center = layer.getBounds().getCenter();
-          const icon = L.divIcon({
-            html: `<img class="flag" src="${countryData[countryName].flag}" alt="flag">`,
-            iconSize: [40, 30],
-            className: ''
+          const icon = L.icon({
+            iconUrl: countryData[countryName].flag,
+            iconSize: [30, 20],
+            className: 'flag-icon'
           });
-          const marker = L.marker(center, { icon }).addTo(map);
+          const marker = L.marker(center, { icon, interactive: false }).addTo(map);
           flagMarkers[countryName] = marker;
         }
       } else {
