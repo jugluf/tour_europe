@@ -126,36 +126,38 @@
     fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
       .then(res => res.json())
       .then(data => {
-        const layer = L.geoJSON(data, {
-          style: feature => {
-            const name = feature.properties.name;
-            if (visited[name] && countryData[name]) {
-              const colors = countryData[name].colors;
-              const canvas = document.createElement('canvas');
-              const ctx = canvas.getContext('2d');
-              canvas.width = 30;
-              canvas.height = 30;
-              const stripeHeight = canvas.height / colors.length;
-              colors.forEach((color, i) => {
-                ctx.fillStyle = color;
-                ctx.fillRect(0, i * stripeHeight, canvas.width, stripeHeight);
-              });
-              const pattern = ctx.createPattern(canvas, 'repeat');
-              return { fillColor: pattern, color: '#444', weight: 1, fillOpacity: 1 };
-            }
-            return { fillColor: '#fff', color: '#444', weight: 1, fillOpacity: 0.1 };
-          },
-          onEachFeature: (feature, layer) => {
-            const name = feature.properties.name;
-            if (!countryData[name]) return;
-            layer.on('click', () => {
-              if (!visited[name]) {
-                visited[name] = true;
-                localStorage.setItem('visited', JSON.stringify(visited));
-                layer.setStyle({ fillOpacity: 1 });
-              }
-              showModal(name, countryData[name].anecdote);
-            });
+    const layer = L.geoJSON(data, {
+      style: feature => {
+        const name = feature.properties.name;
+        if (visited[name] && countryData[name]) {
+          const colors = countryData[name].colors;
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = 30;
+          canvas.height = 30;
+          const stripeHeight = canvas.height / colors.length;
+          colors.forEach((color, i) => {
+            ctx.fillStyle = color;
+            ctx.fillRect(0, i * stripeHeight, canvas.width, stripeHeight);
+          });
+          const pattern = ctx.createPattern(canvas, 'repeat');
+          return { fillColor: pattern, color: '#444', weight: 1, fillOpacity: 1, interactive: true };
+        }
+        return { fillColor: '#fff', color: '#444', weight: 1, fillOpacity: 0.1, interactive: true };
+      },
+      onEachFeature: (feature, layer) => {
+        const name = feature.properties.name;
+        if (!countryData[name]) return;
+        layer.on('click', () => {
+          if (!visited[name]) {
+            visited[name] = true;
+            localStorage.setItem('visited', JSON.stringify(visited));
+            layer.setStyle({ fillOpacity: 1 });
+          }
+          showModal(name, countryData[name].anecdote);
+        });
+      }
+    });
           }
         });
         layer.addTo(map);
