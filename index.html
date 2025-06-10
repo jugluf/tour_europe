@@ -1,74 +1,165 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tour d'Europe de Papa</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-    #map { height: 60vh; }
-    .container { padding: 1em; }
-    .country {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.5em;
-      border-bottom: 1px solid #ddd;
+    body { margin: 0; font-family: sans-serif; background: #f2f2f2; }
+    #map { height: 100vh; width: 100%; }
+    .leaflet-container { background: #fff; filter: grayscale(1); }
+    .modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 8px;
+      padding: 1em;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      max-width: 90vw;
+      z-index: 1000;
     }
-    .anecdote { font-size: 0.9em; color: #555; padding: 0.5em 0; }
+    .modal h2 { margin-top: 0; }
+    .modal .close {
+      position: absolute;
+      top: 0.5em;
+      right: 0.75em;
+      cursor: pointer;
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 100vw;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 999;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
-  <div class="container" id="country-list"></div>
+  <div id="overlay" class="overlay" style="display: none;"></div>
+  <div id="modal" class="modal" style="display: none;">
+    <span class="close" onclick="closeModal()">×</span>
+    <h2 id="modal-title"></h2>
+    <p id="modal-text"></p>
+  </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-geojson-vt/leaflet-geojson-vt.min.js"></script>
   <script>
-    const countries = [
-      { name: "Belgique", coords: [50.85, 4.35], anecdote: "La Belgique produit plus de 1 000 variétés de bière !" },
-      { name: "Luxembourg", coords: [49.61, 6.13], anecdote: "Le Luxembourg est l’un des plus petits pays du monde." },
-      { name: "Allemagne", coords: [52.52, 13.405], anecdote: "L’Allemagne a plus de 1 500 types de saucisses." },
-      { name: "Suisse", coords: [46.95, 7.45], anecdote: "La Suisse a 4 langues nationales !" },
-      { name: "Italie", coords: [41.9028, 12.4964], anecdote: "L’Italie a plus de sites classés UNESCO que tout autre pays." },
-      { name: "Espagne", coords: [40.4168, -3.7038], anecdote: "L’Espagne a inventé la sieste — et le flamenco !" },
-      { name: "Andorre", coords: [42.5078, 1.5211], anecdote: "Andorre n’a pas d’aéroport !" },
-      { name: "Monaco", coords: [43.7384, 7.4246], anecdote: "Monaco est le deuxième plus petit pays au monde." }
-    ];
+    const visited = JSON.parse(localStorage.getItem('visited') || '{}');
 
-    const visited = JSON.parse(localStorage.getItem("visitedCountries") || "[]");
-
-    const map = L.map("map").setView([46.5, 2.2], 5);
+    const map = L.map('map').setView([46.5, 2.2], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+      attribution: '&copy; OpenStreetMap contributors',
+      opacity: 0.1
     }).addTo(map);
 
-    const listContainer = document.getElementById("country-list");
+    const countryData = {
+      "Belgique": {
+        colors: ["#000000", "#FFD700", "#FF0000"], // vertical stripes
+        anecdote: "La Belgique produit plus de 1 000 variétés de bière !"
+      },
+      "Luxembourg": {
+        colors: ["#00A1DE", "#FFFFFF", "#D52B1E"], // horizontal
+        anecdote: "Le Luxembourg est l’un des plus petits pays du monde."
+      },
+      "Allemagne": {
+        colors: ["#000000", "#DD0000", "#FFCE00"],
+        anecdote: "L’Allemagne a plus de 1 500 types de saucisses."
+      },
+      "Suisse": {
+        colors: ["#FF0000"],
+        anecdote: "La Suisse a 4 langues nationales !"
+      },
+      "Italie": {
+        colors: ["#008C45", "#F4F5F0", "#CD212A"],
+        anecdote: "L’Italie a plus de sites classés UNESCO que tout autre pays."
+      },
+      "Espagne": {
+        colors: ["#AA151B", "#F1BF00", "#AA151B"],
+        anecdote: "L’Espagne a inventé la sieste — et le flamenco !"
+      },
+      "Andorre": {
+        colors: ["#002664", "#FFD700", "#D52B1E"],
+        anecdote: "Andorre n’a pas d’aéroport !"
+      },
+      "Monaco": {
+        colors: ["#FF0000", "#FFFFFF"],
+        anecdote: "Monaco est le deuxième plus petit pays au monde."
+      }
+    };
 
-    countries.forEach((country, index) => {
-      const marker = L.marker(country.coords).addTo(map).bindPopup(country.name);
+    function createFlagPattern(name, colors) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 30;
+      canvas.height = 30;
+      const ctx = canvas.getContext('2d');
 
-      const div = document.createElement("div");
-      div.className = "country";
-      const label = document.createElement("label");
-      label.innerText = country.name;
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = visited.includes(country.name);
-      checkbox.onchange = () => {
-        if (checkbox.checked) {
-          visited.push(country.name);
-          alert(country.anecdote);
-        } else {
-          const idx = visited.indexOf(country.name);
-          if (idx > -1) visited.splice(idx, 1);
-        }
-        localStorage.setItem("visitedCountries", JSON.stringify(visited));
-      };
-      div.appendChild(label);
-      div.appendChild(checkbox);
-      listContainer.appendChild(div);
-    });
+      const stripeHeight = canvas.height / colors.length;
+      colors.forEach((color, i) => {
+        ctx.fillStyle = color;
+        ctx.fillRect(0, i * stripeHeight, canvas.width, stripeHeight);
+      });
+
+      return ctx.createPattern(canvas, 'repeat');
+    }
+
+    function showModal(name, text) {
+      document.getElementById('modal-title').innerText = name;
+      document.getElementById('modal-text').innerText = text;
+      document.getElementById('modal').style.display = 'block';
+      document.getElementById('overlay').style.display = 'block';
+    }
+
+    function closeModal() {
+      document.getElementById('modal').style.display = 'none';
+      document.getElementById('overlay').style.display = 'none';
+    }
+
+    fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
+      .then(res => res.json())
+      .then(data => {
+        const layer = L.geoJSON(data, {
+          style: feature => {
+            const name = feature.properties.name;
+            if (visited[name] && countryData[name]) {
+              const colors = countryData[name].colors;
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              canvas.width = 30;
+              canvas.height = 30;
+              const stripeHeight = canvas.height / colors.length;
+              colors.forEach((color, i) => {
+                ctx.fillStyle = color;
+                ctx.fillRect(0, i * stripeHeight, canvas.width, stripeHeight);
+              });
+              const pattern = ctx.createPattern(canvas, 'repeat');
+              return { fillColor: pattern, color: '#444', weight: 1, fillOpacity: 1 };
+            }
+            return { fillColor: '#fff', color: '#444', weight: 1, fillOpacity: 0.1 };
+          },
+          onEachFeature: (feature, layer) => {
+            const name = feature.properties.name;
+            if (!countryData[name]) return;
+            layer.on('click', () => {
+              if (!visited[name]) {
+                visited[name] = true;
+                localStorage.setItem('visited', JSON.stringify(visited));
+                layer.setStyle({ fillOpacity: 1 });
+              }
+              showModal(name, countryData[name].anecdote);
+            });
+          }
+        });
+        layer.addTo(map);
+      });
   </script>
 </body>
 </html>
