@@ -9,7 +9,7 @@
     body { margin: 0; font-family: sans-serif; }
     #map { height: 100vh; width: 100%; }
     .leaflet-container { background: #f8f9fa !important; }
-    
+
     .modal {
       position: fixed;
       top: 50%;
@@ -49,6 +49,13 @@
     .checkbox-container input {
       margin-right: 0.5em;
     }
+    .flag-icon {
+      position: absolute;
+      width: 25px;
+      height: 20px;
+      z-index: 999;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -66,63 +73,67 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
-    // Stockage des pays visités
     const visited = JSON.parse(localStorage.getItem('visited') || '{}');
     let currentLayer = null;
     let currentCountry = null;
 
-    // Initialisation de la carte
     const map = L.map('map').setView([46.5, 2.2], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       opacity: 0.7
     }).addTo(map);
 
-    // Données des pays
     const countryData = {
       "Belgium": {
         color: "#000000",
-        anecdote: "La Belgique produit plus de 1 000 variétés de bière !"
+        anecdote: "La Belgique produit plus de 1 000 variétés de bière !",
+        flag: "https://flagcdn.com/be.svg"
       },
       "Luxembourg": {
         color: "#00A1DE",
-        anecdote: "Le Luxembourg est l'un des plus petits pays du monde."
+        anecdote: "Le Luxembourg est l'un des plus petits pays du monde.",
+        flag: "https://flagcdn.com/lu.svg"
       },
       "Germany": {
         color: "#000000",
-        anecdote: "L'Allemagne a plus de 1 500 types de saucisses."
+        anecdote: "L'Allemagne a plus de 1 500 types de saucisses.",
+        flag: "https://flagcdn.com/de.svg"
       },
       "Switzerland": {
         color: "#FF0000",
-        anecdote: "La Suisse a 4 langues nationales !"
+        anecdote: "La Suisse a 4 langues nationales !",
+        flag: "https://flagcdn.com/ch.svg"
       },
       "Italy": {
         color: "#008C45",
-        anecdote: "L'Italie a plus de sites classés UNESCO que tout autre pays."
+        anecdote: "L'Italie a plus de sites classés UNESCO que tout autre pays.",
+        flag: "https://flagcdn.com/it.svg"
       },
       "Spain": {
         color: "#AA151B",
-        anecdote: "L'Espagne a inventé la sieste — et le flamenco !"
+        anecdote: "L'Espagne a inventé la sieste — et le flamenco !",
+        flag: "https://flagcdn.com/es.svg"
       },
       "Andorra": {
         color: "#002664",
-        anecdote: "Andorre n'a pas d'aéroport !"
+        anecdote: "Andorre n'a pas d'aéroport !",
+        flag: "https://flagcdn.com/ad.svg"
       },
       "Monaco": {
         color: "#FF0000",
-        anecdote: "Monaco est le deuxième plus petit pays au monde."
+        anecdote: "Monaco est le deuxième plus petit pays au monde.",
+        flag: "https://flagcdn.com/mc.svg"
       },
       "France": {
         color: "#0055A4",
-        anecdote: "La France est le pays le plus visité au monde !"
+        anecdote: "La France est le pays le plus visité au monde !",
+        flag: "https://flagcdn.com/fr.svg"
       }
     };
 
-    // Afficher la modale
     function showModal(name, text, layer) {
       currentLayer = layer;
       currentCountry = name;
-      
       document.getElementById('modal-title').innerText = name;
       document.getElementById('modal-text').innerText = text;
       document.getElementById('visited-checkbox').checked = visited[name] || false;
@@ -130,24 +141,21 @@
       document.getElementById('overlay').style.display = 'block';
     }
 
-    // Fermer la modale
     function closeModal() {
       document.getElementById('modal').style.display = 'none';
       document.getElementById('overlay').style.display = 'none';
     }
 
-    // Basculer l'état "visité"
     function toggleVisited() {
       const isVisited = document.getElementById('visited-checkbox').checked;
       visited[currentCountry] = isVisited;
       localStorage.setItem('visited', JSON.stringify(visited));
-      
       if (currentLayer) {
         updateLayerStyle(currentLayer, currentCountry);
+        updateFlag(currentLayer, currentCountry);
       }
     }
 
-    // Mettre à jour le style d'un pays
     function updateLayerStyle(layer, countryName) {
       if (visited[countryName] && countryData[countryName]) {
         layer.setStyle({
@@ -166,35 +174,48 @@
       }
     }
 
-    // Chargement des données géographiques
+    function updateFlag(layer, countryName) {
+      const existingFlag = document.getElementById(`flag-${countryName}`);
+      if (existingFlag) existingFlag.remove();
+
+      if (visited[countryName] && countryData[countryName]?.flag) {
+        const center = layer.getBounds().getCenter();
+        const point = map.latLngToContainerPoint(center);
+        const img = document.createElement('img');
+        img.src = countryData[countryName].flag;
+        img.className = 'flag-icon';
+        img.id = `flag-${countryName}`;
+        img.style.top = `${point.y - 10}px`;
+        img.style.left = `${point.x - 12}px`;
+        document.body.appendChild(img);
+      }
+    }
+
     fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
       .then(res => res.json())
       .then(data => {
         const countries = Object.keys(countryData);
         const filtered = data.features.filter(f => countries.includes(f.properties.name));
-        
+
         const geoJson = L.geoJSON(filtered, {
           onEachFeature: (feature, layer) => {
             const name = feature.properties.name;
             layer.options.interactive = true;
-            
+
             layer.on({
               click: () => {
                 showModal(name, countryData[name]?.anecdote || "Aucune anecdote disponible.", layer);
               },
               mouseover: () => {
-                layer.setStyle({
-                  weight: 2,
-                  color: '#000'
-                });
+                layer.setStyle({ weight: 2, color: '#000' });
               },
               mouseout: () => {
                 updateLayerStyle(layer, name);
               }
             });
-            
-            // Appliquer le style initial
+
             updateLayerStyle(layer, name);
+            updateFlag(layer, name);
           },
           style: {
             fillColor: 'transparent',
@@ -203,10 +224,8 @@
             weight: 1
           }
         });
-        
+
         geoJson.addTo(map);
-        
-        // Ajuster la vue pour centrer l'Europe
         map.fitBounds(geoJson.getBounds(), { padding: [50, 50] });
       });
   </script>
