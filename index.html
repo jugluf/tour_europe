@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tour d'Europe de Papa</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    #map { height: 60vh; }
+    .container { padding: 1em; }
+    .country {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5em;
+      border-bottom: 1px solid #ddd;
+    }
+    .anecdote { font-size: 0.9em; color: #555; padding: 0.5em 0; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="container" id="country-list"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const countries = [
+      { name: "Belgique", coords: [50.85, 4.35], anecdote: "La Belgique produit plus de 1 000 variétés de bière !" },
+      { name: "Luxembourg", coords: [49.61, 6.13], anecdote: "Le Luxembourg est l’un des plus petits pays du monde." },
+      { name: "Allemagne", coords: [52.52, 13.405], anecdote: "L’Allemagne a plus de 1 500 types de saucisses." },
+      { name: "Suisse", coords: [46.95, 7.45], anecdote: "La Suisse a 4 langues nationales !" },
+      { name: "Italie", coords: [41.9028, 12.4964], anecdote: "L’Italie a plus de sites classés UNESCO que tout autre pays." },
+      { name: "Espagne", coords: [40.4168, -3.7038], anecdote: "L’Espagne a inventé la sieste — et le flamenco !" },
+      { name: "Andorre", coords: [42.5078, 1.5211], anecdote: "Andorre n’a pas d’aéroport !" },
+      { name: "Monaco", coords: [43.7384, 7.4246], anecdote: "Monaco est le deuxième plus petit pays au monde." }
+    ];
+
+    const visited = JSON.parse(localStorage.getItem("visitedCountries") || "[]");
+
+    const map = L.map("map").setView([46.5, 2.2], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'Map data © <a href="https://openstreetmap.org">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const listContainer = document.getElementById("country-list");
+
+    countries.forEach((country, index) => {
+      const marker = L.marker(country.coords).addTo(map).bindPopup(country.name);
+
+      const div = document.createElement("div");
+      div.className = "country";
+      const label = document.createElement("label");
+      label.innerText = country.name;
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = visited.includes(country.name);
+      checkbox.onchange = () => {
+        if (checkbox.checked) {
+          visited.push(country.name);
+          alert(country.anecdote);
+        } else {
+          const idx = visited.indexOf(country.name);
+          if (idx > -1) visited.splice(idx, 1);
+        }
+        localStorage.setItem("visitedCountries", JSON.stringify(visited));
+      };
+      div.appendChild(label);
+      div.appendChild(checkbox);
+      listContainer.appendChild(div);
+    });
+  </script>
+</body>
+</html>
