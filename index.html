@@ -39,6 +39,14 @@
       background: rgba(0, 0, 0, 0.3);
       z-index: 999;
     }
+    .checkbox-container {
+      margin-top: 1em;
+      display: flex;
+      align-items: center;
+    }
+    .checkbox-container input {
+      margin-right: 0.5em;
+    }
   </style>
 </head>
 <body>
@@ -48,18 +56,28 @@
     <span class="close" onclick="closeModal()">×</span>
     <h2 id="modal-title"></h2>
     <p id="modal-text"></p>
+    <div class="checkbox-container">
+      <input type="checkbox" id="visited-checkbox" onchange="toggleVisited()">
+      <label for="visited-checkbox">Marquer comme visité</label>
+    </div>
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.pattern/leaflet.pattern.min.js"></script>
   <script>
+    // Stockage des pays visités
     const visited = JSON.parse(localStorage.getItem('visited') || '{}');
+    let currentLayer = null;
+    let currentCountry = null;
+
+    // Initialisation de la carte
     const map = L.map('map').setView([46.5, 2.2], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       opacity: 0.1
     }).addTo(map);
 
+    // Données des pays
     const countryData = {
       "Belgium": {
         colors: ["#000000", "#FFD700", "#FF0000"],
@@ -67,11 +85,11 @@
       },
       "Luxembourg": {
         colors: ["#00A1DE", "#FFFFFF", "#D52B1E"],
-        anecdote: "Le Luxembourg est l’un des plus petits pays du monde."
+        anecdote: "Le Luxembourg est l'un des plus petits pays du monde."
       },
       "Germany": {
         colors: ["#000000", "#DD0000", "#FFCE00"],
-        anecdote: "L’Allemagne a plus de 1 500 types de saucisses."
+        anecdote: "L'Allemagne a plus de 1 500 types de saucisses."
       },
       "Switzerland": {
         colors: ["#FF0000"],
@@ -79,15 +97,15 @@
       },
       "Italy": {
         colors: ["#008C45", "#F4F5F0", "#CD212A"],
-        anecdote: "L’Italie a plus de sites classés UNESCO que tout autre pays."
+        anecdote: "L'Italie a plus de sites classés UNESCO que tout autre pays."
       },
       "Spain": {
         colors: ["#AA151B", "#F1BF00", "#AA151B"],
-        anecdote: "L’Espagne a inventé la sieste — et le flamenco !"
+        anecdote: "L'Espagne a inventé la sieste — et le flamenco !"
       },
       "Andorra": {
         colors: ["#002664", "#FFD700", "#D52B1E"],
-        anecdote: "Andorre n’a pas d’aéroport !"
+        anecdote: "Andorre n'a pas d'aéroport !"
       },
       "Monaco": {
         colors: ["#FF0000", "#FFFFFF"],
@@ -99,6 +117,7 @@
       }
     };
 
+    // Création du motif drapeau
     function createFlagPattern(colors) {
       const canvas = document.createElement('canvas');
       canvas.width = 30;
@@ -112,58 +131,81 @@
       return ctx.createPattern(canvas, 'repeat');
     }
 
-    function showModal(name, text, layer, colors) {
+    // Afficher la modale
+    function showModal(name, text, layer) {
+      currentLayer = layer;
+      currentCountry = name;
+      
       document.getElementById('modal-title').innerText = name;
       document.getElementById('modal-text').innerText = text;
+      document.getElementById('visited-checkbox').checked = visited[name] || false;
       document.getElementById('modal').style.display = 'block';
       document.getElementById('overlay').style.display = 'block';
-
-      // Appliquer le drapeau en tant que motif dès maintenant
-      const pattern = createFlagPattern(colors);
-      layer.setStyle({ fillPattern: pattern, fillOpacity: 1 });
     }
 
+    // Fermer la modale
     function closeModal() {
       document.getElementById('modal').style.display = 'none';
       document.getElementById('overlay').style.display = 'none';
     }
 
+    // Basculer l'état "visité"
+    function toggleVisited() {
+      const isVisited = document.getElementById('visited-checkbox').checked;
+      visited[currentCountry] = isVisited;
+      localStorage.setItem('visited', JSON.stringify(visited));
+      
+      if (currentLayer) {
+        updateLayerStyle(currentLayer, currentCountry);
+      }
+    }
+
+    // Mettre à jour le style d'un pays
+    function updateLayerStyle(layer, countryName) {
+      if (visited[countryName] && countryData[countryName]) {
+        layer.setStyle({
+          fillPattern: createFlagPattern(countryData[countryName].colors),
+          fillOpacity: 1,
+          color: '#444',
+          weight: 1
+        });
+      } else {
+        layer.setStyle({
+          fillColor: '#fff',
+          fillOpacity: 0.1,
+          color: '#444',
+          weight: 1
+        });
+      }
+    }
+
+    // Chargement des données géographiques
     fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json')
       .then(res => res.json())
       .then(data => {
-        const countries = ["France", "Belgium", "Luxembourg", "Germany", "Switzerland", "Italy", "Spain", "Andorra", "Monaco"];
+        const countries = Object.keys(countryData);
         const filtered = data.features.filter(f => countries.includes(f.properties.name));
+        
         const geoJson = L.geoJSON(filtered, {
           onEachFeature: (feature, layer) => {
             const name = feature.properties.name;
             layer.options.interactive = true;
+            
             layer.on('click', () => {
-              if (!visited[name]) {
-                visited[name] = true;
-                localStorage.setItem('visited', JSON.stringify(visited));
-              }
-              const colors = countryData[name]?.colors || ["#ccc"];
-              showModal(name, countryData[name]?.anecdote || "Aucune anecdote disponible.", layer, colors);
+              showModal(name, countryData[name]?.anecdote || "Aucune anecdote disponible.", layer);
             });
+            
+            // Appliquer le style initial
+            updateLayerStyle(layer, name);
           },
-          style: feature => {
-            const name = feature.properties.name;
-            if (visited[name] && countryData[name]) {
-              return {
-                fillPattern: createFlagPattern(countryData[name].colors),
-                fillOpacity: 1,
-                color: '#444',
-                weight: 1
-              };
-            }
-            return {
-              fillColor: '#fff',
-              fillOpacity: 0.1,
-              color: '#444',
-              weight: 1
-            };
+          style: {
+            fillColor: '#fff',
+            fillOpacity: 0.1,
+            color: '#444',
+            weight: 1
           }
         });
+        
         geoJson.addTo(map);
       });
   </script>
