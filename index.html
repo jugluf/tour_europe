@@ -6,9 +6,10 @@
   <title>Tour d'Europe de Papa</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body { margin: 0; font-family: sans-serif; background: #f2f2f2; }
+    body { margin: 0; font-family: sans-serif; }
     #map { height: 100vh; width: 100%; }
-    .leaflet-container { background: #fff; filter: grayscale(1); }
+    .leaflet-container { background: #f8f9fa !important; }
+    
     .modal {
       position: fixed;
       top: 50%;
@@ -20,8 +21,9 @@
       box-shadow: 0 5px 15px rgba(0,0,0,0.3);
       max-width: 90vw;
       z-index: 1000;
+      width: 300px;
     }
-    .modal h2 { margin-top: 0; }
+    .modal h2 { margin-top: 0; color: #2c3e50; }
     .modal .close {
       position: absolute;
       top: 0.5em;
@@ -36,7 +38,7 @@
       left: 0;
       height: 100vh;
       width: 100vw;
-      background: rgba(0, 0, 0, 0.3);
+      background: rgba(0, 0, 0, 0.5);
       z-index: 999;
     }
     .checkbox-container {
@@ -63,7 +65,6 @@
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.pattern/leaflet.pattern.min.js"></script>
   <script>
     // Stockage des pays visités
     const visited = JSON.parse(localStorage.getItem('visited') || '{}');
@@ -74,62 +75,48 @@
     const map = L.map('map').setView([46.5, 2.2], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
-      opacity: 0.1
+      opacity: 0.7
     }).addTo(map);
 
     // Données des pays
     const countryData = {
       "Belgium": {
-        colors: ["#000000", "#FFD700", "#FF0000"],
+        color: "#000000",
         anecdote: "La Belgique produit plus de 1 000 variétés de bière !"
       },
       "Luxembourg": {
-        colors: ["#00A1DE", "#FFFFFF", "#D52B1E"],
+        color: "#00A1DE",
         anecdote: "Le Luxembourg est l'un des plus petits pays du monde."
       },
       "Germany": {
-        colors: ["#000000", "#DD0000", "#FFCE00"],
+        color: "#000000",
         anecdote: "L'Allemagne a plus de 1 500 types de saucisses."
       },
       "Switzerland": {
-        colors: ["#FF0000"],
+        color: "#FF0000",
         anecdote: "La Suisse a 4 langues nationales !"
       },
       "Italy": {
-        colors: ["#008C45", "#F4F5F0", "#CD212A"],
+        color: "#008C45",
         anecdote: "L'Italie a plus de sites classés UNESCO que tout autre pays."
       },
       "Spain": {
-        colors: ["#AA151B", "#F1BF00", "#AA151B"],
+        color: "#AA151B",
         anecdote: "L'Espagne a inventé la sieste — et le flamenco !"
       },
       "Andorra": {
-        colors: ["#002664", "#FFD700", "#D52B1E"],
+        color: "#002664",
         anecdote: "Andorre n'a pas d'aéroport !"
       },
       "Monaco": {
-        colors: ["#FF0000", "#FFFFFF"],
+        color: "#FF0000",
         anecdote: "Monaco est le deuxième plus petit pays au monde."
       },
       "France": {
-        colors: ["#0055A4", "#FFFFFF", "#EF4135"],
+        color: "#0055A4",
         anecdote: "La France est le pays le plus visité au monde !"
       }
     };
-
-    // Création du motif drapeau
-    function createFlagPattern(colors) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 30;
-      canvas.height = 30;
-      const ctx = canvas.getContext('2d');
-      const stripeHeight = canvas.height / colors.length;
-      colors.forEach((color, i) => {
-        ctx.fillStyle = color;
-        ctx.fillRect(0, i * stripeHeight, canvas.width, stripeHeight);
-      });
-      return ctx.createPattern(canvas, 'repeat');
-    }
 
     // Afficher la modale
     function showModal(name, text, layer) {
@@ -164,16 +151,16 @@
     function updateLayerStyle(layer, countryName) {
       if (visited[countryName] && countryData[countryName]) {
         layer.setStyle({
-          fillPattern: createFlagPattern(countryData[countryName].colors),
-          fillOpacity: 1,
-          color: '#444',
-          weight: 1
+          fillColor: countryData[countryName].color,
+          fillOpacity: 0.7,
+          color: '#333',
+          weight: 2
         });
       } else {
         layer.setStyle({
-          fillColor: '#fff',
-          fillOpacity: 0.1,
-          color: '#444',
+          fillColor: 'transparent',
+          fillOpacity: 0,
+          color: '#666',
           weight: 1
         });
       }
@@ -191,22 +178,36 @@
             const name = feature.properties.name;
             layer.options.interactive = true;
             
-            layer.on('click', () => {
-              showModal(name, countryData[name]?.anecdote || "Aucune anecdote disponible.", layer);
+            layer.on({
+              click: () => {
+                showModal(name, countryData[name]?.anecdote || "Aucune anecdote disponible.", layer);
+              },
+              mouseover: () => {
+                layer.setStyle({
+                  weight: 2,
+                  color: '#000'
+                });
+              },
+              mouseout: () => {
+                updateLayerStyle(layer, name);
+              }
             });
             
             // Appliquer le style initial
             updateLayerStyle(layer, name);
           },
           style: {
-            fillColor: '#fff',
-            fillOpacity: 0.1,
-            color: '#444',
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            color: '#666',
             weight: 1
           }
         });
         
         geoJson.addTo(map);
+        
+        // Ajuster la vue pour centrer l'Europe
+        map.fitBounds(geoJson.getBounds(), { padding: [50, 50] });
       });
   </script>
 </body>
