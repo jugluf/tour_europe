@@ -44,22 +44,13 @@
     .checkbox-container, .note-container, .photo-container {
       margin-top: 1em;
     }
-    .checkbox-container input {
-      margin-right: 0.5em;
+    .note-container, .photo-container {
+      display: none;
     }
-    textarea {
-      width: 100%;
-      height: 60px;
-      resize: none;
-    }
-    input[type="file"] {
-      width: 100%;
-    }
-    .preview {
+    #photo-preview {
       margin-top: 0.5em;
       max-width: 100%;
-      max-height: 100px;
-      object-fit: contain;
+      display: none;
     }
   </style>
 </head>
@@ -75,13 +66,13 @@
       <label for="visited-checkbox">Marquer comme visité</label>
     </div>
     <div class="note-container">
-      <label for="note">Note personnelle :</label>
-      <textarea id="note" oninput="saveNote()"></textarea>
+      <label for="note">Note personnelle :</label><br>
+      <textarea id="note" rows="3" style="width: 100%;"></textarea>
     </div>
     <div class="photo-container">
-      <label for="photo">Ajouter une photo :</label>
-      <input type="file" id="photo" accept="image/*" onchange="savePhoto()">
-      <img id="photo-preview" class="preview" style="display:none;">
+      <label for="photo">Photo souvenir :</label><br>
+      <input type="file" id="photo" accept="image/*" onchange="savePhoto(event)"><br>
+      <img id="photo-preview" alt="Prévisualisation">
     </div>
   </div>
 
@@ -101,60 +92,15 @@
     }).addTo(map);
 
     const countryData = {
-      "Belgium": {
-        localName: "Belgique",
-        color: "#000000",
-        anecdote: "La Belgique produit plus de 1 000 variétés de bière !",
-        flag: "https://flagcdn.com/be.svg"
-      },
-      "Luxembourg": {
-        localName: "Lëtzebuerg",
-        color: "#00A1DE",
-        anecdote: "Le Luxembourg est l'un des plus petits pays du monde.",
-        flag: "https://flagcdn.com/lu.svg"
-      },
-      "Germany": {
-        localName: "Deutschland",
-        color: "#000000",
-        anecdote: "L'Allemagne a plus de 1 500 types de saucisses.",
-        flag: "https://flagcdn.com/de.svg"
-      },
-      "Switzerland": {
-        localName: "Suisse",
-        color: "#FF0000",
-        anecdote: "La Suisse a 4 langues nationales !",
-        flag: "https://flagcdn.com/ch.svg"
-      },
-      "Italy": {
-        localName: "Italia",
-        color: "#008C45",
-        anecdote: "L'Italie a plus de sites classés UNESCO que tout autre pays.",
-        flag: "https://flagcdn.com/it.svg"
-      },
-      "Spain": {
-        localName: "España",
-        color: "#AA151B",
-        anecdote: "L'Espagne a inventé la sieste — et le flamenco !",
-        flag: "https://flagcdn.com/es.svg"
-      },
-      "Andorra": {
-        localName: "Andorra",
-        color: "#002664",
-        anecdote: "Andorre n'a pas d'aéroport !",
-        flag: "https://flagcdn.com/ad.svg"
-      },
-      "Monaco": {
-        localName: "Monaco",
-        color: "#FF0000",
-        anecdote: "Monaco est le deuxième plus petit pays au monde.",
-        flag: "https://flagcdn.com/mc.svg"
-      },
-      "France": {
-        localName: "France",
-        color: "#0055A4",
-        anecdote: "La France est le pays le plus visité au monde !",
-        flag: "https://flagcdn.com/fr.svg"
-      }
+      "Belgium": { localName: "Belgique", color: "#000000", anecdote: "La Belgique produit plus de 1 000 variétés de bière !", flag: "https://flagcdn.com/be.svg" },
+      "Luxembourg": { localName: "Lëtzebuerg", color: "#00A1DE", anecdote: "Le Luxembourg est l'un des plus petits pays du monde.", flag: "https://flagcdn.com/lu.svg" },
+      "Germany": { localName: "Deutschland", color: "#000000", anecdote: "L'Allemagne a plus de 1 500 types de saucisses.", flag: "https://flagcdn.com/de.svg" },
+      "Switzerland": { localName: "Suisse", color: "#FF0000", anecdote: "La Suisse a 4 langues nationales !", flag: "https://flagcdn.com/ch.svg" },
+      "Italy": { localName: "Italia", color: "#008C45", anecdote: "L'Italie a plus de sites classés UNESCO que tout autre pays.", flag: "https://flagcdn.com/it.svg" },
+      "Spain": { localName: "España", color: "#AA151B", anecdote: "L'Espagne a inventé la sieste — et le flamenco !", flag: "https://flagcdn.com/es.svg" },
+      "Andorra": { localName: "Andorra", color: "#002664", anecdote: "Andorre n'a pas d'aéroport !", flag: "https://flagcdn.com/ad.svg" },
+      "Monaco": { localName: "Monaco", color: "#FF0000", anecdote: "Monaco est le deuxième plus petit pays au monde.", flag: "https://flagcdn.com/mc.svg" },
+      "France": { localName: "France", color: "#0055A4", anecdote: "La France est le pays le plus visité au monde !", flag: "https://flagcdn.com/fr.svg" }
     };
 
     function showModal(name, anecdote, layer) {
@@ -163,14 +109,19 @@
       const data = countryData[name];
       document.getElementById('modal-title').innerText = data.localName;
       document.getElementById('modal-text').innerText = data.anecdote;
-      document.getElementById('visited-checkbox').checked = !!visited[name];
+      const isVisited = !!visited[name];
+      document.getElementById('visited-checkbox').checked = isVisited;
       document.getElementById('note').value = notes[name] || "";
+      document.querySelector('.note-container').style.display = isVisited ? 'block' : 'none';
+      document.querySelector('.photo-container').style.display = isVisited ? 'block' : 'none';
+
       if (photos[name]) {
         document.getElementById('photo-preview').src = photos[name];
         document.getElementById('photo-preview').style.display = 'block';
       } else {
         document.getElementById('photo-preview').style.display = 'none';
       }
+
       document.getElementById('modal').style.display = 'block';
       document.getElementById('overlay').style.display = 'block';
     }
@@ -187,55 +138,39 @@
       if (currentLayer) {
         updateLayerStyle(currentLayer, currentCountry);
       }
+      document.querySelector('.note-container').style.display = isVisited ? 'block' : 'none';
+      document.querySelector('.photo-container').style.display = isVisited ? 'block' : 'none';
     }
 
-    function saveNote() {
+    function savePhoto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        photos[currentCountry] = e.target.result;
+        localStorage.setItem('photos', JSON.stringify(photos));
+        document.getElementById('photo-preview').src = e.target.result;
+        document.getElementById('photo-preview').style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    document.getElementById('note').addEventListener('input', () => {
       notes[currentCountry] = document.getElementById('note').value;
       localStorage.setItem('notes', JSON.stringify(notes));
-    }
-
-    function savePhoto() {
-      const fileInput = document.getElementById('photo');
-      const file = fileInput.files[0];
-      if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          photos[currentCountry] = e.target.result;
-          localStorage.setItem('photos', JSON.stringify(photos));
-          document.getElementById('photo-preview').src = e.target.result;
-          document.getElementById('photo-preview').style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-      }
-    }
+    });
 
     function updateLayerStyle(layer, countryName) {
-      if (visited[countryName] && countryData[countryName]) {
-        layer.setStyle({
-          fillColor: countryData[countryName].color,
-          fillOpacity: 0.7,
-          color: '#333',
-          weight: 2
-        });
-
+      const data = countryData[countryName];
+      if (visited[countryName]) {
+        layer.setStyle({ fillColor: data.color, fillOpacity: 0.7, color: '#333', weight: 2 });
         if (!flagMarkers[countryName]) {
           const center = layer.getBounds().getCenter();
-          const icon = L.icon({
-            iconUrl: countryData[countryName].flag,
-            iconSize: [30, 20],
-            className: 'flag-icon'
-          });
-          const marker = L.marker(center, { icon, interactive: false }).addTo(map);
-          flagMarkers[countryName] = marker;
+          const icon = L.icon({ iconUrl: data.flag, iconSize: [30, 20], className: 'flag-icon' });
+          flagMarkers[countryName] = L.marker(center, { icon, interactive: false }).addTo(map);
         }
       } else {
-        layer.setStyle({
-          fillColor: 'transparent',
-          fillOpacity: 0,
-          color: '#666',
-          weight: 1
-        });
-
+        layer.setStyle({ fillColor: 'transparent', fillOpacity: 0, color: '#666', weight: 1 });
         if (flagMarkers[countryName]) {
           map.removeLayer(flagMarkers[countryName]);
           delete flagMarkers[countryName];
@@ -248,38 +183,19 @@
       .then(data => {
         const countries = Object.keys(countryData);
         const filtered = data.features.filter(f => countries.includes(f.properties.name));
-
         const geoJson = L.geoJSON(filtered, {
           onEachFeature: (feature, layer) => {
             const name = feature.properties.name;
             layer.options.interactive = true;
-
             layer.on({
-              click: () => {
-                const { anecdote, localName } = countryData[name] || {};
-                showModal(name, anecdote || "Aucune anecdote disponible.", layer);
-              },
-              mouseover: () => {
-                layer.setStyle({
-                  weight: 2,
-                  color: '#000'
-                });
-              },
-              mouseout: () => {
-                updateLayerStyle(layer, name);
-              }
+              click: () => showModal(name, countryData[name]?.anecdote || "Aucune anecdote disponible.", layer),
+              mouseover: () => layer.setStyle({ weight: 2, color: '#000' }),
+              mouseout: () => updateLayerStyle(layer, name)
             });
-
             updateLayerStyle(layer, name);
           },
-          style: {
-            fillColor: 'transparent',
-            fillOpacity: 0,
-            color: '#666',
-            weight: 1
-          }
+          style: { fillColor: 'transparent', fillOpacity: 0, color: '#666', weight: 1 }
         });
-
         geoJson.addTo(map);
         map.fitBounds(geoJson.getBounds(), { padding: [50, 50] });
       });
