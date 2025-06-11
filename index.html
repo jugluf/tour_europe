@@ -58,9 +58,20 @@
     <span class="close" onclick="closeModal()">×</span>
     <h2 id="modal-title"></h2>
     <p id="modal-text"></p>
+
     <div class="checkbox-container">
       <input type="checkbox" id="visited-checkbox" onchange="toggleVisited()">
       <label for="visited-checkbox">Marquer comme visité</label>
+    </div>
+
+    <div id="photo-note-section" style="display: none; margin-top: 1em;">
+      <label for="photo-upload">Photo souvenir :</label><br>
+      <input type="file" id="photo-upload" accept="image/*" onchange="handlePhotoUpload()"><br><br>
+
+      <label for="note-text">Note :</label><br>
+      <textarea id="note-text" rows="3" style="width: 100%;" oninput="saveNote()"></textarea><br><br>
+
+      <img id="preview-image" src="" style="max-width: 100%; display: none; margin-top: 0.5em;" />
     </div>
   </div>
 
@@ -128,9 +139,18 @@
     function showModal(name, text, layer) {
       currentLayer = layer;
       currentCountry = name;
+      if (!visited[name]) visited[name] = { visited: false };
+
       document.getElementById('modal-title').innerText = name;
       document.getElementById('modal-text').innerText = text;
-      document.getElementById('visited-checkbox').checked = !!visited[name];
+      document.getElementById('visited-checkbox').checked = !!visited[name].visited;
+
+      const section = document.getElementById('photo-note-section');
+      section.style.display = visited[name].visited ? 'block' : 'none';
+
+      document.getElementById('note-text').value = visited[name].note || '';
+      updatePhotoPreview();
+
       document.getElementById('modal').style.display = 'block';
       document.getElementById('overlay').style.display = 'block';
     }
@@ -142,15 +162,50 @@
 
     function toggleVisited() {
       const isVisited = document.getElementById('visited-checkbox').checked;
-      visited[currentCountry] = isVisited;
+      if (!visited[currentCountry]) visited[currentCountry] = {};
+      visited[currentCountry].visited = isVisited;
       localStorage.setItem('visited', JSON.stringify(visited));
       if (currentLayer) {
         updateLayerStyle(currentLayer, currentCountry);
       }
+      document.getElementById('photo-note-section').style.display = isVisited ? 'block' : 'none';
+    }
+
+    function handlePhotoUpload() {
+      const fileInput = document.getElementById('photo-upload');
+      const file = fileInput.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          visited[currentCountry].photo = e.target.result;
+          localStorage.setItem('visited', JSON.stringify(visited));
+          updatePhotoPreview();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function saveNote() {
+      const note = document.getElementById('note-text').value;
+      visited[currentCountry].note = note;
+      localStorage.setItem('visited', JSON.stringify(visited));
+    }
+
+    function updatePhotoPreview() {
+      const preview = document.getElementById('preview-image');
+      const photoData = visited[currentCountry]?.photo;
+      if (photoData) {
+        preview.src = photoData;
+        preview.style.display = 'block';
+      } else {
+        preview.src = '';
+        preview.style.display = 'none';
+      }
     }
 
     function updateLayerStyle(layer, countryName) {
-      if (visited[countryName] && countryData[countryName]) {
+      const isVisited = visited[countryName]?.visited;
+      if (isVisited && countryData[countryName]) {
         layer.setStyle({
           fillColor: countryData[countryName].color,
           fillOpacity: 0.7,
