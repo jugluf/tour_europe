@@ -22,6 +22,8 @@
     .overlay { position: fixed; top: 0; left: 0; height: 100vh; width: 100vw; background: rgba(0, 0, 0, 0.5); z-index: 999; }
     .checkbox-container { margin-top: 1em; display: flex; align-items: center; }
     .checkbox-container input { margin-right: 0.5em; }
+    .note-section, .photo-section { margin-top: 1em; }
+    .photo-preview { margin-top: 0.5em; max-width: 100%; border: 1px solid #ccc; border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -35,11 +37,23 @@
       <input type="checkbox" id="visited-checkbox" onchange="toggleVisited()">
       <label for="visited-checkbox">Marquer comme visité</label>
     </div>
+    <div id="note-section" class="note-section" style="display: none;">
+      <label for="note-input">Note personnelle :</label>
+      <textarea id="note-input" rows="3" style="width: 100%;"></textarea>
+    </div>
+    <div id="photo-section" class="photo-section" style="display: none;">
+      <label for="photo-input">Photo souvenir :</label>
+      <input type="file" id="photo-input" accept="image/*" capture="environment">
+      <img id="photo-preview" class="photo-preview" src="" alt="" style="display: none;" />
+    </div>
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     const visited = JSON.parse(localStorage.getItem('visited') || '{}');
+    const notes = JSON.parse(localStorage.getItem('notes') || '{}');
+    const photos = JSON.parse(localStorage.getItem('photos') || '{}');
+
     const flagMarkers = {};
     let currentLayer = null;
     let currentCountry = null;
@@ -94,7 +108,21 @@
       document.getElementById('modal-title').innerText = translatedName;
       document.getElementById('modal-text').innerText = text;
 
-      document.getElementById('visited-checkbox').checked = !!visited[name];
+      const isVisited = !!visited[name];
+      document.getElementById('visited-checkbox').checked = isVisited;
+      document.getElementById('note-section').style.display = isVisited ? 'block' : 'none';
+      document.getElementById('photo-section').style.display = isVisited ? 'block' : 'none';
+
+      document.getElementById('note-input').value = notes[name] || '';
+
+      const photoPreview = document.getElementById('photo-preview');
+      if (photos[name]) {
+        photoPreview.src = photos[name];
+        photoPreview.style.display = 'block';
+      } else {
+        photoPreview.style.display = 'none';
+      }
+
       document.getElementById('modal').style.display = 'block';
       document.getElementById('overlay').style.display = 'block';
     }
@@ -108,8 +136,40 @@
       const isVisited = document.getElementById('visited-checkbox').checked;
       visited[currentCountry] = isVisited;
       localStorage.setItem('visited', JSON.stringify(visited));
+
+      document.getElementById('note-section').style.display = isVisited ? 'block' : 'none';
+      document.getElementById('photo-section').style.display = isVisited ? 'block' : 'none';
+
+      if (!isVisited) {
+        delete notes[currentCountry];
+        delete photos[currentCountry];
+        localStorage.setItem('notes', JSON.stringify(notes));
+        localStorage.setItem('photos', JSON.stringify(photos));
+      }
+
       if (currentLayer) updateLayerStyle(currentLayer, currentCountry);
     }
+
+    document.getElementById('note-input').addEventListener('input', () => {
+      notes[currentCountry] = document.getElementById('note-input').value;
+      localStorage.setItem('notes', JSON.stringify(notes));
+    });
+
+    document.getElementById('photo-input').addEventListener('change', event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const base64 = e.target.result;
+        photos[currentCountry] = base64;
+        localStorage.setItem('photos', JSON.stringify(photos));
+
+        const preview = document.getElementById('photo-preview');
+        preview.src = base64;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
 
     function updateLayerStyle(layer, countryName) {
       if (visited[countryName] && countryData[countryName]) {
@@ -119,6 +179,7 @@
           color: '#333',
           weight: 2
         });
+
         if (!flagMarkers[countryName]) {
           const center = layer.getBounds().getCenter();
           const icon = L.icon({
@@ -136,6 +197,7 @@
           color: '#666',
           weight: 1
         });
+
         if (flagMarkers[countryName]) {
           map.removeLayer(flagMarkers[countryName]);
           delete flagMarkers[countryName];
