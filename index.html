@@ -24,14 +24,18 @@
     .checkbox-container input { margin-right: 0.5em; }
     .note-section, .photo-section { margin-top: 1em; }
     .photo-preview { margin-top: 0.5em; max-width: 100%; border: 1px solid #ccc; border-radius: 4px; }
-    .photo-options { display: flex; gap: 10px; margin-top: 0.5em; }
+    .photo-options { display: flex; flex-direction: column; gap: 10px; margin-top: 0.5em; }
     .photo-option-btn { 
-      flex: 1; padding: 8px; border: 1px solid #ccc; 
-      background: #f8f8f8; border-radius: 4px; cursor: pointer;
-      text-align: center;
+      padding: 10px; border: 1px solid #007AFF; 
+      background: white; border-radius: 8px; cursor: pointer;
+      text-align: center; color: #007AFF; font-weight: bold;
     }
-    .photo-option-btn:hover { background: #e8e8e8; }
+    .photo-option-btn.camera { background: #007AFF; color: white; }
     .hidden-file-input { display: none; }
+    #remove-photo-btn {
+      margin-top: 0.5em; padding: 8px; background: #ff3b30; 
+      color: white; border: none; border-radius: 8px; display: none;
+    }
   </style>
 </head>
 <body>
@@ -52,13 +56,17 @@
     <div id="photo-section" class="photo-section" style="display: none;">
       <label>Photo souvenir :</label>
       <div class="photo-options">
-        <button class="photo-option-btn" onclick="document.getElementById('take-photo-input').click()">Prendre une photo</button>
-        <button class="photo-option-btn" onclick="document.getElementById('choose-photo-input').click()">Choisir une photo</button>
+        <button class="photo-option-btn camera" onclick="takePhoto()">
+          Prendre une photo
+        </button>
+        <button class="photo-option-btn" onclick="choosePhoto()">
+          Choisir dans la galerie
+        </button>
       </div>
-      <input type="file" id="take-photo-input" class="hidden-file-input" accept="image/*" capture="environment" onchange="handlePhotoSelection(event)">
-      <input type="file" id="choose-photo-input" class="hidden-file-input" accept="image/*" onchange="handlePhotoSelection(event)">
+      <input type="file" id="camera-input" class="hidden-file-input" accept="image/*" capture="environment">
+      <input type="file" id="gallery-input" class="hidden-file-input" accept="image/*">
       <img id="photo-preview" class="photo-preview" src="" alt="" style="display: none;" />
-      <button id="remove-photo-btn" class="photo-option-btn" style="margin-top: 0.5em; display: none;" onclick="removePhoto()">Supprimer la photo</button>
+      <button id="remove-photo-btn" onclick="removePhoto()">Supprimer la photo</button>
     </div>
   </div>
 
@@ -129,17 +137,7 @@
 
       document.getElementById('note-input').value = notes[name] || '';
 
-      const photoPreview = document.getElementById('photo-preview');
-      const removePhotoBtn = document.getElementById('remove-photo-btn');
-      if (photos[name]) {
-        photoPreview.src = photos[name];
-        photoPreview.style.display = 'block';
-        removePhotoBtn.style.display = 'block';
-      } else {
-        photoPreview.style.display = 'none';
-        removePhotoBtn.style.display = 'none';
-      }
-
+      updatePhotoPreview();
       document.getElementById('modal').style.display = 'block';
       document.getElementById('overlay').style.display = 'block';
     }
@@ -167,44 +165,58 @@
       if (currentLayer) updateLayerStyle(currentLayer, currentCountry);
     }
 
-    document.getElementById('note-input').addEventListener('input', () => {
-      notes[currentCountry] = document.getElementById('note-input').value;
-      localStorage.setItem('notes', JSON.stringify(notes));
-    });
+    function takePhoto() {
+      document.getElementById('camera-input').click();
+    }
 
-    function handlePhotoSelection(event) {
+    function choosePhoto() {
+      document.getElementById('gallery-input').click();
+    }
+
+    function handlePhotoUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
       
       const reader = new FileReader();
       reader.onload = function (e) {
-        const base64 = e.target.result;
-        photos[currentCountry] = base64;
+        photos[currentCountry] = e.target.result;
         localStorage.setItem('photos', JSON.stringify(photos));
-
-        const preview = document.getElementById('photo-preview');
-        preview.src = base64;
-        preview.style.display = 'block';
-        
-        document.getElementById('remove-photo-btn').style.display = 'block';
+        updatePhotoPreview();
         
         // Reset file inputs
-        document.getElementById('take-photo-input').value = '';
-        document.getElementById('choose-photo-input').value = '';
+        document.getElementById('camera-input').value = '';
+        document.getElementById('gallery-input').value = '';
       };
       reader.readAsDataURL(file);
+    }
+
+    function updatePhotoPreview() {
+      const preview = document.getElementById('photo-preview');
+      const removeBtn = document.getElementById('remove-photo-btn');
+      
+      if (photos[currentCountry]) {
+        preview.src = photos[currentCountry];
+        preview.style.display = 'block';
+        removeBtn.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+        removeBtn.style.display = 'none';
+      }
     }
 
     function removePhoto() {
       delete photos[currentCountry];
       localStorage.setItem('photos', JSON.stringify(photos));
-      
-      const preview = document.getElementById('photo-preview');
-      preview.src = '';
-      preview.style.display = 'none';
-      
-      document.getElementById('remove-photo-btn').style.display = 'none';
+      updatePhotoPreview();
     }
+
+    document.getElementById('note-input').addEventListener('input', () => {
+      notes[currentCountry] = document.getElementById('note-input').value;
+      localStorage.setItem('notes', JSON.stringify(notes));
+    });
+
+    document.getElementById('camera-input').addEventListener('change', handlePhotoUpload);
+    document.getElementById('gallery-input').addEventListener('change', handlePhotoUpload);
 
     function updateLayerStyle(layer, countryName) {
       if (visited[countryName] && countryData[countryName]) {
