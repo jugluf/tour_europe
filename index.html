@@ -24,31 +24,11 @@
     .checkbox-container input { margin-right: 0.5em; }
     .note-section, .photo-section { margin-top: 1em; }
     .photo-preview { margin-top: 0.5em; max-width: 100%; border: 1px solid #ddd; border-radius: 8px; }
-    .photo-main-btn {
+    .photo-btn {
       padding: 12px; border: none; 
       background: #007AFF; border-radius: 10px; cursor: pointer;
       text-align: center; color: white; font-weight: bold;
       width: 100%; font-size: 16px;
-    }
-    .photo-sub-options {
-      display: none;
-      margin-top: 10px;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-    .photo-sub-option {
-      padding: 12px;
-      background: white;
-      border-bottom: 1px solid #eee;
-      text-align: center;
-      color: #007AFF;
-    }
-    .photo-sub-option:last-child {
-      border-bottom: none;
-    }
-    .photo-sub-option:hover {
-      background: #f8f8f8;
     }
     .hidden-file-input { display: none; }
     #remove-photo-btn {
@@ -75,17 +55,10 @@
     </div>
     <div id="photo-section" class="photo-section" style="display: none;">
       <label>Photo souvenir :</label>
-      <button class="photo-main-btn" onclick="togglePhotoOptions()">
+      <button class="photo-btn" onclick="document.getElementById('photo-input').click()">
         Ajouter une photo
       </button>
-      <div id="photo-sub-options" class="photo-sub-options">
-        <div class="photo-sub-option" onclick="openPhotoLibrary()">Photothèque</div>
-        <div class="photo-sub-option" onclick="openCamera()">Prendre une photo</div>
-        <div class="photo-sub-option" onclick="openFileBrowser()">Choisir un fichier</div>
-      </div>
-      <input type="file" id="camera-input" class="hidden-file-input" accept="image/*" capture="camera">
-      <input type="file" id="library-input" class="hidden-file-input" accept="image/*">
-      <input type="file" id="file-input" class="hidden-file-input" accept="image/*">
+      <input type="file" id="photo-input" class="hidden-file-input" accept="image/*">
       <img id="photo-preview" class="photo-preview" src="" alt="" style="display: none;" />
       <button id="remove-photo-btn" onclick="removePhoto()">Supprimer la photo</button>
     </div>
@@ -157,7 +130,6 @@
       document.getElementById('photo-section').style.display = isVisited ? 'block' : 'none';
 
       document.getElementById('note-input').value = notes[name] || '';
-      document.getElementById('photo-sub-options').style.display = 'none';
 
       updatePhotoPreview();
       document.getElementById('modal').style.display = 'block';
@@ -187,26 +159,6 @@
       if (currentLayer) updateLayerStyle(currentLayer, currentCountry);
     }
 
-    function togglePhotoOptions() {
-      const options = document.getElementById('photo-sub-options');
-      options.style.display = options.style.display === 'block' ? 'none' : 'block';
-    }
-
-    function openCamera() {
-      document.getElementById('camera-input').click();
-      document.getElementById('photo-sub-options').style.display = 'none';
-    }
-
-    function openPhotoLibrary() {
-      document.getElementById('library-input').click();
-      document.getElementById('photo-sub-options').style.display = 'none';
-    }
-
-    function openFileBrowser() {
-      document.getElementById('file-input').click();
-      document.getElementById('photo-sub-options').style.display = 'none';
-    }
-
     function handlePhotoUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -217,10 +169,8 @@
         localStorage.setItem('photos', JSON.stringify(photos));
         updatePhotoPreview();
         
-        // Reset file inputs
-        document.getElementById('camera-input').value = '';
-        document.getElementById('library-input').value = '';
-        document.getElementById('file-input').value = '';
+        // Reset file input
+        document.getElementById('photo-input').value = '';
       };
       reader.readAsDataURL(file);
     }
@@ -250,9 +200,7 @@
       localStorage.setItem('notes', JSON.stringify(notes));
     });
 
-    document.getElementById('camera-input').addEventListener('change', handlePhotoUpload);
-    document.getElementById('library-input').addEventListener('change', handlePhotoUpload);
-    document.getElementById('file-input').addEventListener('change', handlePhotoUpload);
+    document.getElementById('photo-input').addEventListener('change', handlePhotoUpload);
 
     function updateLayerStyle(layer, countryName) {
       if (visited[countryName] && countryData[countryName]) {
