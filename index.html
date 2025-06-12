@@ -6,13 +6,13 @@
   <title>Tour d'Europe de Papa</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    body { margin: 0; font-family: sans-serif; }
+    body { margin: 0; font-family: -apple-system, sans-serif; }
     #map { height: 100vh; width: 100%; }
     .leaflet-container { background: #f8f9fa !important; }
     .modal {
       position: fixed; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      background: white; border-radius: 8px;
+      background: white; border-radius: 10px;
       box-shadow: 0 5px 15px rgba(0,0,0,0.3);
       max-width: 90vw; z-index: 1000;
       width: 320px; max-height: 90vh; overflow-y: auto; padding: 1em;
@@ -23,18 +23,38 @@
     .checkbox-container { margin-top: 1em; display: flex; align-items: center; }
     .checkbox-container input { margin-right: 0.5em; }
     .note-section, .photo-section { margin-top: 1em; }
-    .photo-preview { margin-top: 0.5em; max-width: 100%; border: 1px solid #ccc; border-radius: 4px; }
-    .photo-options { display: flex; flex-direction: column; gap: 10px; margin-top: 0.5em; }
-    .photo-option-btn { 
-      padding: 10px; border: 1px solid #007AFF; 
-      background: white; border-radius: 8px; cursor: pointer;
-      text-align: center; color: #007AFF; font-weight: bold;
+    .photo-preview { margin-top: 0.5em; max-width: 100%; border: 1px solid #ddd; border-radius: 8px; }
+    .photo-main-btn {
+      padding: 12px; border: none; 
+      background: #007AFF; border-radius: 10px; cursor: pointer;
+      text-align: center; color: white; font-weight: bold;
+      width: 100%; font-size: 16px;
     }
-    .photo-option-btn.camera { background: #007AFF; color: white; }
+    .photo-sub-options {
+      display: none;
+      margin-top: 10px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .photo-sub-option {
+      padding: 12px;
+      background: white;
+      border-bottom: 1px solid #eee;
+      text-align: center;
+      color: #007AFF;
+    }
+    .photo-sub-option:last-child {
+      border-bottom: none;
+    }
+    .photo-sub-option:hover {
+      background: #f8f8f8;
+    }
     .hidden-file-input { display: none; }
     #remove-photo-btn {
-      margin-top: 0.5em; padding: 8px; background: #ff3b30; 
-      color: white; border: none; border-radius: 8px; display: none;
+      margin-top: 10px; padding: 10px; background: #ff3b30; 
+      color: white; border: none; border-radius: 10px; 
+      width: 100%; font-size: 16px; display: none;
     }
   </style>
 </head>
@@ -51,20 +71,21 @@
     </div>
     <div id="note-section" class="note-section" style="display: none;">
       <label for="note-input">Note personnelle :</label>
-      <textarea id="note-input" rows="3" style="width: 100%;"></textarea>
+      <textarea id="note-input" rows="3" style="width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 8px;"></textarea>
     </div>
     <div id="photo-section" class="photo-section" style="display: none;">
       <label>Photo souvenir :</label>
-      <div class="photo-options">
-        <button class="photo-option-btn camera" onclick="takePhoto()">
-          Prendre une photo
-        </button>
-        <button class="photo-option-btn" onclick="choosePhoto()">
-          Choisir dans la galerie
-        </button>
+      <button class="photo-main-btn" onclick="togglePhotoOptions()">
+        Ajouter une photo
+      </button>
+      <div id="photo-sub-options" class="photo-sub-options">
+        <div class="photo-sub-option" onclick="openPhotoLibrary()">Photothèque</div>
+        <div class="photo-sub-option" onclick="openCamera()">Prendre une photo</div>
+        <div class="photo-sub-option" onclick="openFileBrowser()">Choisir un fichier</div>
       </div>
-      <input type="file" id="camera-input" class="hidden-file-input" accept="image/*" capture="environment">
-      <input type="file" id="gallery-input" class="hidden-file-input" accept="image/*">
+      <input type="file" id="camera-input" class="hidden-file-input" accept="image/*" capture="camera">
+      <input type="file" id="library-input" class="hidden-file-input" accept="image/*">
+      <input type="file" id="file-input" class="hidden-file-input" accept="image/*">
       <img id="photo-preview" class="photo-preview" src="" alt="" style="display: none;" />
       <button id="remove-photo-btn" onclick="removePhoto()">Supprimer la photo</button>
     </div>
@@ -136,6 +157,7 @@
       document.getElementById('photo-section').style.display = isVisited ? 'block' : 'none';
 
       document.getElementById('note-input').value = notes[name] || '';
+      document.getElementById('photo-sub-options').style.display = 'none';
 
       updatePhotoPreview();
       document.getElementById('modal').style.display = 'block';
@@ -165,12 +187,24 @@
       if (currentLayer) updateLayerStyle(currentLayer, currentCountry);
     }
 
-    function takePhoto() {
-      document.getElementById('camera-input').click();
+    function togglePhotoOptions() {
+      const options = document.getElementById('photo-sub-options');
+      options.style.display = options.style.display === 'block' ? 'none' : 'block';
     }
 
-    function choosePhoto() {
-      document.getElementById('gallery-input').click();
+    function openCamera() {
+      document.getElementById('camera-input').click();
+      document.getElementById('photo-sub-options').style.display = 'none';
+    }
+
+    function openPhotoLibrary() {
+      document.getElementById('library-input').click();
+      document.getElementById('photo-sub-options').style.display = 'none';
+    }
+
+    function openFileBrowser() {
+      document.getElementById('file-input').click();
+      document.getElementById('photo-sub-options').style.display = 'none';
     }
 
     function handlePhotoUpload(event) {
@@ -185,7 +219,8 @@
         
         // Reset file inputs
         document.getElementById('camera-input').value = '';
-        document.getElementById('gallery-input').value = '';
+        document.getElementById('library-input').value = '';
+        document.getElementById('file-input').value = '';
       };
       reader.readAsDataURL(file);
     }
@@ -216,7 +251,8 @@
     });
 
     document.getElementById('camera-input').addEventListener('change', handlePhotoUpload);
-    document.getElementById('gallery-input').addEventListener('change', handlePhotoUpload);
+    document.getElementById('library-input').addEventListener('change', handlePhotoUpload);
+    document.getElementById('file-input').addEventListener('change', handlePhotoUpload);
 
     function updateLayerStyle(layer, countryName) {
       if (visited[countryName] && countryData[countryName]) {
