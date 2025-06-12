@@ -24,6 +24,14 @@
     .checkbox-container input { margin-right: 0.5em; }
     .note-section, .photo-section { margin-top: 1em; }
     .photo-preview { margin-top: 0.5em; max-width: 100%; border: 1px solid #ccc; border-radius: 4px; }
+    .photo-options { display: flex; gap: 10px; margin-top: 0.5em; }
+    .photo-option-btn { 
+      flex: 1; padding: 8px; border: 1px solid #ccc; 
+      background: #f8f8f8; border-radius: 4px; cursor: pointer;
+      text-align: center;
+    }
+    .photo-option-btn:hover { background: #e8e8e8; }
+    .hidden-file-input { display: none; }
   </style>
 </head>
 <body>
@@ -42,9 +50,15 @@
       <textarea id="note-input" rows="3" style="width: 100%;"></textarea>
     </div>
     <div id="photo-section" class="photo-section" style="display: none;">
-      <label for="photo-input">Photo souvenir :</label>
-      <input type="file" id="photo-input" accept="image/*" capture="environment">
+      <label>Photo souvenir :</label>
+      <div class="photo-options">
+        <button class="photo-option-btn" onclick="document.getElementById('take-photo-input').click()">Prendre une photo</button>
+        <button class="photo-option-btn" onclick="document.getElementById('choose-photo-input').click()">Choisir une photo</button>
+      </div>
+      <input type="file" id="take-photo-input" class="hidden-file-input" accept="image/*" capture="environment" onchange="handlePhotoSelection(event)">
+      <input type="file" id="choose-photo-input" class="hidden-file-input" accept="image/*" onchange="handlePhotoSelection(event)">
       <img id="photo-preview" class="photo-preview" src="" alt="" style="display: none;" />
+      <button id="remove-photo-btn" class="photo-option-btn" style="margin-top: 0.5em; display: none;" onclick="removePhoto()">Supprimer la photo</button>
     </div>
   </div>
 
@@ -116,11 +130,14 @@
       document.getElementById('note-input').value = notes[name] || '';
 
       const photoPreview = document.getElementById('photo-preview');
+      const removePhotoBtn = document.getElementById('remove-photo-btn');
       if (photos[name]) {
         photoPreview.src = photos[name];
         photoPreview.style.display = 'block';
+        removePhotoBtn.style.display = 'block';
       } else {
         photoPreview.style.display = 'none';
+        removePhotoBtn.style.display = 'none';
       }
 
       document.getElementById('modal').style.display = 'block';
@@ -155,9 +172,10 @@
       localStorage.setItem('notes', JSON.stringify(notes));
     });
 
-    document.getElementById('photo-input').addEventListener('change', event => {
+    function handlePhotoSelection(event) {
       const file = event.target.files[0];
       if (!file) return;
+      
       const reader = new FileReader();
       reader.onload = function (e) {
         const base64 = e.target.result;
@@ -167,9 +185,26 @@
         const preview = document.getElementById('photo-preview');
         preview.src = base64;
         preview.style.display = 'block';
+        
+        document.getElementById('remove-photo-btn').style.display = 'block';
+        
+        // Reset file inputs
+        document.getElementById('take-photo-input').value = '';
+        document.getElementById('choose-photo-input').value = '';
       };
       reader.readAsDataURL(file);
-    });
+    }
+
+    function removePhoto() {
+      delete photos[currentCountry];
+      localStorage.setItem('photos', JSON.stringify(photos));
+      
+      const preview = document.getElementById('photo-preview');
+      preview.src = '';
+      preview.style.display = 'none';
+      
+      document.getElementById('remove-photo-btn').style.display = 'none';
+    }
 
     function updateLayerStyle(layer, countryName) {
       if (visited[countryName] && countryData[countryName]) {
